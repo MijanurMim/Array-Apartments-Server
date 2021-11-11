@@ -3,9 +3,17 @@ const { MongoClient } = require("mongodb");
 const ObjectId = require("mongodb").ObjectId;
 require("dotenv").config();
 const cors = require("cors");
+const admin = require("firebase-admin");
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Connection with firebase Admin SDK
+const serviceAccount = require("./arrayapartments-firebaseSDK.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 // MiddleWare
 app.use(cors());
@@ -18,6 +26,19 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 console.log(uri);
+
+// Token verification middleware
+async function verifyToken(req, res, next) {
+  if (req.headers?.authorization?.startsWith("Bearer ")) {
+    const token = req.headers.authorization.split(" ")[1];
+
+    try {
+      const decodedUser = await admin.auth().verifyIdToken(token);
+      req.decodedEmail = decodedUser.email;
+    } catch {}
+  }
+  next();
+}
 
 async function run() {
   try {
@@ -154,6 +175,36 @@ async function run() {
         options
       );
       res.json(result);
+    });
+
+    //  Creating Admin
+    app.put("/users/admin", verifyToken, async (req, res, next) => {
+      const user = req.body;
+      const requester = req.decodedEmail;
+      if (requester) {
+        const requesterAccount = await usersCollection.findOne({
+          email: requester,
+        });
+        if (requesterAccount.role === "admin") {
+          const filter = { email: user.email };
+          const updateDoc = { $set: { role: "admin" } };
+          const result = await usersCollection.updateOne(filter, updateDoc);
+          res.json(result);
+        }
+      } else {
+        res.status(401).json({ message: "You do not have the permisson" });
+      }
+    });
+
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      let isAdmin = false;
+      if (user?.role === "admin") {
+        isAdmin = true;
+      }
+      res.json({ admin: isAdmin });
     });
   } finally {
     // await client.close()
