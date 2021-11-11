@@ -48,8 +48,7 @@ async function run() {
     const apartmentCollection = database.collection("apartments");
     const bookingCollection = database.collection("bookings");
     const usersCollection = database.collection("users");
-
-    const membersCollection = database.collection("members");
+    const reviewsCollection = database.collection("reviews");
 
     // ADD PACKAGES
     app.post("/addEvent", async (req, res) => {
@@ -58,17 +57,24 @@ async function run() {
       console.log(result);
     });
 
-    // ADD Boookings
+    // ADD Bookings
     app.post("/addNewBooking", async (req, res) => {
       console.log(req.body);
       const result = await bookingCollection.insertOne(req.body);
       console.log(result);
     });
 
-    // ADD Members
-    app.post("/addMember", async (req, res) => {
-      console.log(req.body);
-      const result = await membersCollection.insertOne(req.body);
+    // ADD Reviews
+    app.post("/addReviews", async (req, res) => {
+      const result = await reviewsCollection.insertOne(req.body);
+      console.log(result);
+    });
+
+    // Get All Reviews
+    app.get("/allReviews", async (req, res) => {
+      const result = await reviewsCollection.find({}).toArray();
+      console.log(result);
+
       res.send(result);
     });
 
@@ -82,12 +88,6 @@ async function run() {
         .toArray();
       res.send(result);
       console.log(result);
-    });
-
-    // Get ALL Members
-    app.get("/allMembers", async (req, res) => {
-      const result = await membersCollection.find({}).toArray();
-      res.send(result);
     });
 
     // Get ALL Packages
